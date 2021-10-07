@@ -1,5 +1,7 @@
 defmodule Dictionary do
 
-  defdelegate random_word(), to: Dictionary.WordList
+  alias Dictionary.WordList 
+
+  defdelegate random_word(), to: WordList
 
 end

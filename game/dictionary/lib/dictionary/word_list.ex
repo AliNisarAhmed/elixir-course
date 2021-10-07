@@ -14,4 +14,5 @@ defmodule Dictionary.WordList do
   def random_word() do
     Agent.get(__MODULE__, &Enum.random/1)
   end
+
 end
