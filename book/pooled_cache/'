@@ -1,0 +1,62 @@
+defmodule Todo.Database do
+  use GenServer
+
+  @me __MODULE__
+  @db_folder "./persist"
+
+  def start() do
+    GenServer.start(@me, nil, name: @me)
+  end
+
+  def store(key, data) do
+    worker = choose_worker(key)
+    GenServer.cast(worker, {:store, key, data})
+  end
+
+  def get(key) do
+    worker = choose_worker(key)
+    GenServer.call(worker, {:get, key})
+  end
+
+  def choose_worker(key) do 
+    GenServer.call(@me, {:choose_worker, key})
+  end
+
+  # -----------------------------------------
+
+  def init(_) do
+    workers =
+      for n <- 0..2, into: %{} do
+        {n, Todo.DatabaseWorker.start(@db_folder)}
+      end
+
+    {:ok, workers}
+  end
+
+  def handle_cast({:store, key, data}, state) do
+    key
+    |> file_name()
+    |> File.write!(:erlang.term_to_binary(data))
+
+    {:noreply, state}
+  end
+
+  def handle_call({:get, key}, _, state) do
+    data =
+      case File.read(file_name(key)) do
+        {:ok, contents} -> :erlang.binary_to_term(contents)
+        _ -> nil
+      end
+
+    {:reply, data, state}
+  end
+
+  def handle_call({:choose_worker, key}, _, workers) do 
+    hash = :erlang.phash2(key, 3)
+    {:reply, workers[hash], workers}
+  end
+
+  defp file_name(key) do
+    Path.join(@db_folder, to_string(key))
+  end
+end
